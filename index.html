@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Baden Marathon Trainer</title>
-<meta name="theme-color" content="#0F1420">
+<meta name="theme-color" content="#0C1917">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,8 +14,9 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root{
-    --ink:#0F1420; --ink2:#1A2130; --sub:#667085; --mut:#98A2B3; --line:#EAECF0; --bg:#F7F8FA;
-    --orange:#F97316; --orange2:#FB923C; --orange-d:#C2410C;
+    --ink:#0C1917; --ink2:#16302B; --sub:#5B6B68; --mut:#8FA19D; --line:#E4EDEB; --bg:#F6F9F8;
+    --orange:#0D9488; --orange2:#2DD4BF; --orange-d:#0F766E;
+    --coral:#FB7185; --coral-bg:#FFF1F2;
     --green-bg:#ECFDF5; --green-bd:#86EFAC; --green-tx:#15803D;
     --amber-bg:#FFFBEB; --amber-bd:#FCD34D; --amber-tx:#B45309;
     --rose-bg:#FFF1F2; --rose-bd:#FDA4AF; --rose-tx:#BE123C;
@@ -33,11 +34,11 @@
   #app{min-height:100vh;padding-bottom:90px;}
   button{font-family:inherit;}
   input,textarea{font-family:inherit;}
-  ::selection{background:rgba(249,115,22,.22);}
+  ::selection{background:rgba(13,148,136,.22);}
 
-  .hdr{background:linear-gradient(160deg,#0F1420 0%,#1A2130 60%,#171E2E 100%);
+  .hdr{background:linear-gradient(160deg,#0C1917 0%,#16302B 55%,#0F2420 100%);
     color:#fff;padding:20px 18px 20px;position:sticky;top:0;z-index:50;
-    border-radius:0 0 26px 26px; box-shadow:0 10px 30px rgba(15,20,32,.22);}
+    border-radius:0 0 26px 26px; box-shadow:0 10px 30px rgba(12,25,23,.24);}
   .hdr-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
   .eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--orange2);font-weight:800;}
   .sync{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;
@@ -65,6 +66,8 @@
   .grid7 > div{flex:1;text-align:center;}
   .daycell{aspect-ratio:1;border-radius:9px;display:flex;align-items:center;justify-content:center;
     font-size:11px;color:#fff;font-weight:700;border:2px solid transparent;transition:transform .15s ease;}
+  .daycell-pending{box-shadow:0 0 0 2px rgba(20,184,166,.14);}
+  .daycell-pending:active{transform:scale(.9);}
 
   .progress-track{height:9px;background:#F0F1F4;border-radius:20px;overflow:hidden;
     box-shadow:inset 0 1px 2px rgba(16,24,40,.05);}
@@ -89,7 +92,7 @@
   .inp{display:block;width:100%;padding:12px 13px;border:1.5px solid var(--line);border-radius:11px;
     font-size:15px;box-sizing:border-box;outline:none;background:#fff;color:var(--ink);
     transition:border-color .15s ease, box-shadow .15s ease;}
-  .inp:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(249,115,22,.12);}
+  .inp:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(13,148,136,.12);}
   .toggle-row{display:flex;gap:8px;}
   .toggle-btn{flex:1;padding:12px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;
     border:1.5px solid var(--line);background:#fff;color:#374151;transition:all .15s ease;}
@@ -110,7 +113,7 @@
     display:flex;padding:7px 6px;z-index:100;border-radius:22px;box-shadow:var(--shadow-lg);}
   .navbtn{flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;
     align-items:center;gap:3px;padding:7px 0;color:var(--mut);border-radius:15px;transition:all .15s ease;}
-  .navbtn.active{color:var(--orange-d);background:rgba(249,115,22,.10);}
+  .navbtn.active{color:var(--orange-d);background:rgba(13,148,136,.10);}
   .navbtn:active{transform:scale(.94);}
   .navbtn .ic{font-size:19px;}
   .navbtn .lb{font-size:10px;font-weight:800;}
@@ -224,6 +227,7 @@ var ui = {
   trainPhase: 1,
   planOpenWeek: null,
   confirmDel: null,
+  dayDetail: null,
   toastMsg: "",
   toastTimer: null,
   rf: { date: todayStr(), dist:"", mins:"", secs:"", feeling:3, notes:"" },
@@ -443,6 +447,23 @@ function planProgress(){
   return { total:total, logged:logged, pct: total ? Math.round(logged/total*100) : 0 };
 }
 
+function getUpcoming(){
+  var today = todayStr();
+  var todayD = new Date(today+"T12:00:00");
+  for(var d=new Date(todayD); d<=new Date(2026,8,20); d.setDate(d.getDate()+1)){
+    var ds=d2s(d); var pi=planFor(ds);
+    if(!pi || !pi.run) continue;
+    var logged = state.runs.some(function(r){return r.date===ds;});
+    if(!logged) return { date:ds, pi:pi, isToday: ds===today };
+  }
+  return null;
+}
+
+function openDayDetail(date){
+  ui.dayDetail = date;
+  render();
+}
+
 function renderHome(){
   var today=todayStr(); var ti=planFor(today);
   var totalKm = state.runs.reduce(function(s,r){return s+(r.km||0);},0);
@@ -508,12 +529,26 @@ function renderHome(){
       var hasWkt= state.wkts.some(function(w){return w.date===ds;});
       var loggedDay = hasRun||hasWkt; var sched=isRun||isStr;
       var bg = loggedDay ? (hasRun?"#16A34A":"#D97706") : (sched?"#F3F4F6":"#FAFAFA");
-      var bd = isToday ? "var(--orange)" : (loggedDay ? (hasRun?"#16A34A":"#D97706") : "transparent");
+      var bd = isToday ? "var(--orange)" : (loggedDay ? (hasRun?"#16A34A":"#D97706") : (sched?"rgba(13,148,136,.35)":"transparent"));
       var glyph = loggedDay?"✓":(isRun?"🏃":isStr?"💪":"");
+      var clickable = sched ? ' onclick="openDayDetail(\''+ds+'\');" style="cursor:pointer;"' : '';
       html += '<div><div style="font-size:10px;color:'+(isToday?"var(--orange)":"var(--mut)")+';font-weight:'+(isToday?800:500)+';margin-bottom:4px;">'+days[i]+'</div>'+
-        '<div class="daycell" style="background:'+bg+';border-color:'+bd+';">'+glyph+'</div></div>';
+        '<div class="daycell'+(sched&&!loggedDay?" daycell-pending":"")+'" style="background:'+bg+';border-color:'+bd+';"'+clickable+'>'+glyph+'</div></div>';
     }
     html += '</div></div>';
+  }
+
+  var upcoming = getUpcoming();
+  if(upcoming && !upcoming.isToday){
+    var uc = TCOL[upcoming.pi.run.t]||TCOL.easy;
+    var daysAway = Math.round((new Date(upcoming.date+"T12:00:00") - new Date(today+"T12:00:00"))/86400000);
+    html += '<div class="card" style="cursor:pointer;border-left:4px solid '+uc.bd+';" onclick="openDayDetail(\''+upcoming.date+'\');">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'+
+      '<div style="flex:1;"><div class="section-label" style="margin-bottom:4px;">Upcoming</div>'+
+      '<div style="font-weight:800;font-size:14px;color:'+uc.tx+';">'+esc(upcoming.pi.run.l)+'</div>'+
+      '<div style="font-size:12px;color:var(--sub);margin-top:2px;">'+fmtDate(upcoming.date)+' · in '+daysAway+' day'+(daysAway!==1?"s":"")+'</div></div>'+
+      '<div style="font-weight:900;font-size:20px;color:'+uc.tx+';">'+upcoming.pi.run.d+'<span style="font-size:12px;font-weight:600;">km</span></div>'+
+      '</div></div>';
   }
 
   var pp = planProgress();
@@ -796,6 +831,46 @@ function renderHistory(){
 
 /* ─────────────────────────  MAIN RENDER  ───────────────────────── */
 
+function renderDayDetailModal(date){
+  var pi = planFor(date);
+  if(!pi || !pi.run) { ui.dayDetail = null; return ""; }
+  var run = pi.run;
+  var c = TCOL[run.t] || TCOL.easy;
+  var loggedEntry = state.runs.filter(function(r){return r.date===date;})[0];
+  var isPast = date < todayStr();
+  var isToday = date === todayStr();
+
+  var body = '<div style="width:52px;height:52px;border-radius:16px;background:'+c.bg+';display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 12px;">'+
+    (run.t==="race"?"🏅":run.t==="long"?"🏃":run.t==="tempo"||run.t==="racepace"?"⚡":"👟")+'</div>'+
+    '<div style="font-weight:800;font-size:17px;text-align:center;">'+esc(run.l)+'</div>'+
+    '<div style="font-size:12px;color:var(--mut);text-align:center;margin-top:3px;">'+fmtDate(date)+' · Week '+pi.week+' · '+PNAME[pi.wp.ph]+'</div>'+
+    '<div style="display:flex;gap:8px;justify-content:center;margin-top:14px;">'+
+    '<div style="background:'+c.bg+';border-radius:12px;padding:10px 18px;text-align:center;">'+
+    '<div style="font-weight:900;font-size:20px;color:'+c.tx+';">'+run.d+'</div><div style="font-size:10px;color:var(--mut);text-transform:uppercase;">km</div></div></div>'+
+    '<div style="background:var(--bg);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:13px;color:#374151;line-height:1.5;text-align:left;">'+esc(run.n)+'</div>';
+
+  if(loggedEntry){
+    body += '<div style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:12px;padding:12px 14px;margin-top:12px;text-align:left;">'+
+      '<div style="font-weight:700;font-size:12px;color:var(--green-tx);margin-bottom:4px;">✓ Logged</div>'+
+      '<div style="font-size:13px;color:#374151;">'+loggedEntry.km+' km'+((loggedEntry.mins||loggedEntry.secs)?' · '+loggedEntry.mins+':'+String(loggedEntry.secs||0).padStart(2,"0"):'')+(loggedEntry.pace?' · '+loggedEntry.pace+'/km':'')+'</div>'+
+      (loggedEntry.notes?'<div style="font-size:12px;color:var(--sub);margin-top:4px;font-style:italic;">"'+esc(loggedEntry.notes)+'"</div>':'')+
+      '</div>';
+  }
+
+  var footer;
+  if(loggedEntry){
+    footer = '<button class="btn" style="background:#F3F4F6;color:#374151;margin-top:16px;" onclick="ui.dayDetail=null;render();">Close</button>';
+  } else if(isPast || isToday){
+    footer = '<div class="btn-row" style="margin-top:16px;">'+
+      '<button class="btn" style="background:#F3F4F6;color:#374151;" onclick="ui.dayDetail=null;render();">Close</button>'+
+      '<button class="btn" style="background:'+c.tx+';" onclick="ui.dayDetail=null;quickLog(\'run\',\''+date+'\');">Log this</button></div>';
+  } else {
+    footer = '<button class="btn" style="background:#F3F4F6;color:#374151;margin-top:16px;" onclick="ui.dayDetail=null;render();">Close</button>';
+  }
+
+  return '<div class="modal-bg" onclick="if(event.target===this){ui.dayDetail=null;render();}"><div class="modal">'+body+footer+'</div></div>';
+}
+
 function render(){
   var totalKm = state.runs.reduce(function(s,r){return s+(r.km||0);},0);
   var app = document.getElementById("app");
@@ -819,6 +894,8 @@ function render(){
       '<div style="font-size:13px;color:var(--sub);margin-bottom:20px;">This cannot be undone.</div>'+
       '<div class="btn-row"><button class="btn" style="background:#F3F4F6;color:#374151;" onclick="ui.confirmDel=null;render();">Cancel</button>'+
       '<button class="btn" style="background:#EF4444;" onclick="doDelete(\''+ui.confirmDel.type+'\','+ui.confirmDel.id+');">Delete</button></div></div></div>';
+  } else if(ui.dayDetail){
+    modalHtml = renderDayDetailModal(ui.dayDetail);
   }
 
   app.innerHTML =
