@@ -1,5 +1,5 @@
 // Minimal service worker so the app is installable and works offline.
-const CACHE_NAME = "baden-marathon-trainer-v3";
+const CACHE_NAME = "baden-marathon-trainer-v4";
 const ASSETS = [
   "./",
   "./index.html",
